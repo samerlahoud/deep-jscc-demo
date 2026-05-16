@@ -20,14 +20,14 @@ from utils import set_seed
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--snr_train_list", type=int, nargs="*", default=[1, 4, 7, 13, 19])
+    p.add_argument("--snr_train_list", type=int, nargs="*", default=[1, 7, 19])
     p.add_argument("--snr_train_range", type=float, nargs=2, default=None,
                    metavar=("LO", "HI"),
                    help="If set, train a single model sampling SNR ~ U(LO, HI) per batch.")
     p.add_argument("--channel", choices=["awgn", "rayleigh"], default="awgn")
-    p.add_argument("--epochs", type=int, default=5)
+    p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch_size", type=int, default=128)
-    p.add_argument("--latent_ch", type=int, default=8)
+    p.add_argument("--latent_ch", type=int, default=16)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--data_dir", default="./data")
     p.add_argument("--ckpt_dir", default="checkpoints")

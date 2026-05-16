@@ -45,7 +45,7 @@ def eval_psnr_ssim(model, loader, device, snr_db=10, channel="awgn"):
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--snr_test_list", type=int, nargs="*", default=[1, 4, 7, 13, 19])
+    p.add_argument("--snr_test_list", type=int, nargs="*", default=[1, 7, 19])
     p.add_argument("--channel", choices=["awgn", "rayleigh"], default="awgn")
     p.add_argument("--ckpt_dir", default="checkpoints")
     p.add_argument("--ckpt_glob", default=None,
@@ -74,7 +74,7 @@ def main():
 
     os.makedirs(args.out_dir, exist_ok=True)
     psnr_curves, ssim_curves, labels = {}, {}, {}
-    last_model = None
+    models_by_snr = {}  # snr_train -> model, used to pick the grid model
 
     for ckpt_path in ckpts:
         ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
@@ -93,7 +93,10 @@ def main():
             print(f"  {label:24s} | SNR_test={snr_te:2d}dB | PSNR={p:5.2f} | SSIM={s:.3f}", flush=True)
         psnr_curves[ckpt_path] = p_curve
         ssim_curves[ckpt_path] = s_curve
-        last_model = model
+
+        snr_train = ckpt.get("snr_train")
+        if isinstance(snr_train, (int, float)):
+            models_by_snr[float(snr_train)] = model
 
     # Side-by-side PSNR / SSIM figure.
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
@@ -113,10 +116,15 @@ def main():
     plt.close(fig)
     print("[saved]", curves_path)
 
-    # Qualitative reconstructions from the last checkpoint loaded.
-    if last_model is not None:
+    # Qualitative reconstructions: pick the model whose SNR_train is closest to
+    # the median SNR_test, so the grid shows a well-matched operating point.
+    if models_by_snr:
+        median_test = sorted(args.snr_test_list)[len(args.snr_test_list) // 2]
+        grid_snr = min(models_by_snr, key=lambda s: abs(s - median_test))
+        grid_model = models_by_snr[grid_snr]
+        print(f"[grid] using model trained at SNR={grid_snr:g} dB", flush=True)
         recon_path = save_reconstruction_grid(
-            last_model, testset, device, args.snr_test_list, channel=args.channel,
+            grid_model, testset, device, args.snr_test_list, channel=args.channel,
             n_images=6, out_path=os.path.join(args.out_dir, f"{args.channel}_reconstructions.png"),
         )
         print("[saved]", recon_path)

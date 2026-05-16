@@ -9,10 +9,10 @@ wireless image transmission on CIFAR-10. Based on
 ## Architecture
 ![Architecture](architecture.jpg)
 
-Encoder downsamples 32×32×3 to an 8×8×`latent_ch` latent (`latent_ch=8` ⇒ bandwidth
-ratio **k/n = 1/6**). The latent is power-normalized, transmitted through a noisy
-channel (AWGN or Rayleigh), and decoded back to an image. The whole pipeline is trained
-end-to-end with MSE.
+Encoder downsamples 32×32×3 to an 8×8×`latent_ch` latent (default `latent_ch=16` ⇒
+bandwidth ratio **k/n = 1/3**). The latent is power-normalized, transmitted through a
+noisy channel (AWGN or Rayleigh), and decoded back to an image. The whole pipeline is
+trained end-to-end with MSE.
 
 ## Install
 ```bash
@@ -26,12 +26,15 @@ python train.py --quick
 python eval.py
 ```
 
-## Full reproduction
-Train one model per `SNR_train ∈ {1, 4, 7, 13, 19}` dB and sweep the test SNR:
+## Full demo run
+Trains three models at `SNR_train ∈ {1, 7, 19}` dB (30 epochs each, `latent_ch=16`) and
+sweeps the test SNR. ~10 min on a Colab T4 GPU.
 ```bash
-python train.py                 # AWGN, 5 epochs per SNR (default)
+python train.py                 # AWGN (default)
 python eval.py                  # PSNR + SSIM curves + reconstruction grid
 ```
+The reconstruction grid alternates **Raw @ X dB** (pixels sent through the same channel,
+no encoder) with **JSCC @ X dB** — making the value of learned coding visible at a glance.
 
 ## Useful variants
 ```bash

@@ -38,3 +38,19 @@ def apply_channel(x, snr_db, kind="awgn"):
     if kind == "rayleigh":
         return rayleigh(x, snr_db)
     raise ValueError(f"unknown channel: {kind}")
+
+
+def transmit_raw(x, snr_db, kind="awgn"):
+    """Send raw pixels through the channel as a no-coding baseline.
+
+    Unit-power-normalizes the image (same power constraint as the JSCC latent),
+    transmits, then restores the original scale and clamps to [0, 1] for display.
+    Note: this is generous to the baseline — it uses MORE channel uses than the
+    JSCC latent. The point is precisely that even with that advantage, raw
+    transmission collapses at low SNR.
+    """
+    p = x.pow(2).mean(dim=(1, 2, 3), keepdim=True).clamp_min(1e-8)
+    scale = torch.sqrt(p)
+    z = x / scale
+    y = apply_channel(z, snr_db, kind=kind)
+    return (y * scale).clamp(0, 1)
