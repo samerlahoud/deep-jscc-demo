@@ -9,57 +9,74 @@ wireless image transmission on CIFAR-10. Based on
 ## Architecture
 ![Architecture](architecture.jpg)
 
-Encoder downsamples 32×32×3 to an 8×8×`latent_ch` latent (default `latent_ch=16` ⇒
-bandwidth ratio **k/n = 1/3**). The latent is power-normalized, transmitted through a
-noisy channel (AWGN or Rayleigh), and decoded back to an image. The whole pipeline is
-trained end-to-end with MSE.
+Encoder downsamples 32×32×3 to an 8×8×`latent_ch` latent. The latent is power-normalized,
+transmitted through a noisy channel (AWGN or Rayleigh), and decoded back to an image.
+The whole pipeline is trained end-to-end with MSE.
+
+The bandwidth ratio **k/n = (8·8·latent_ch) / (32·32·3)** — `latent_ch=16` gives
+k/n = 1/3, `latent_ch=8` gives 1/6, etc.
 
 ## Install
 ```bash
 pip install -r requirements.txt
 ```
 
-## Quick demo (≈ 1 minute on CPU)
-For a live tutorial demo — trains one model on a small CIFAR-10 subset, then evaluates:
+## Quick demo (≈ 1 minute)
+Trains a single model on a CIFAR-10 subset and evaluates. Good for a live demo intro.
 ```bash
 python train.py --quick
 python eval.py
 ```
 
-## Full demo run
-Trains three models at `SNR_train ∈ {1, 7, 19}` dB (30 epochs each, `latent_ch=16`) and
-sweeps the test SNR. ~10 min on a Colab T4 GPU.
+## The two-part tutorial story
+
+### Story 1 — Robust training beats single-SNR training
+Train two fixed-SNR models *and* one robust model on `SNR ~ U(0, 20)`, then sweep
+test SNR. The robust model is competitive everywhere and avoids the mismatch dip.
 ```bash
-python train.py                 # AWGN (default)
-python eval.py                  # PSNR + SSIM curves + reconstruction grid
+python train.py                                # fixed: SNR_train ∈ {1, 7} dB
+python train.py --snr_train_range 0 20         # robust model over the operating range
+python eval.py                                 # plots all three curves on one axis
 ```
-The reconstruction grid alternates **Raw @ X dB** (pixels sent through the same channel,
-no encoder) with **JSCC @ X dB** — making the value of learned coding visible at a glance.
+Outputs:
+- `results/awgn_snr_sweep.png` — PSNR + SSIM vs. SNR_test (robust curve in bold)
+- `results/awgn_reconstructions.png` — Original | Raw @ X dB | JSCC @ X dB grid
 
-## Useful variants
+### Story 2 — Rate-distortion: bandwidth ratio vs. quality
+Train at a fixed SNR across several bandwidth ratios, then plot quality vs. k/n.
 ```bash
-# Train a single model robust over a range of SNRs (sampled per batch):
-python train.py --snr_train_range 0 20
+python train.py --snr_train_list 7 --latent_ch_list 4 8 16 24
+python eval.py --mode bw_sweep --bw_train_snr 7dB
+```
+Outputs:
+- `results/awgn_bw_sweep.png` — PSNR + SSIM vs. bandwidth ratio
+- `results/awgn_bw_reconstructions.png` — same image reconstructed at each k/n,
+  visually showing the rate-distortion curve
 
-# Train and evaluate over a Rayleigh-fading channel instead of AWGN:
+## Other variants
+```bash
+# Rayleigh-fading channel instead of AWGN:
 python train.py --channel rayleigh
 python eval.py  --channel rayleigh
 ```
 
-## Outputs
-- `checkpoints/deepjscc_<channel>_snrtrain_<tag>.pth` — one per training config.
-- `results/<channel>_psnr_ssim_curves.png` — PSNR & SSIM vs. `SNR_test`.
-- `results/<channel>_reconstructions.png` — qualitative grid showing each test SNR.
+## Outputs (file naming)
+Checkpoints encode both the train SNR and the latent size:
+```
+checkpoints/deepjscc_<channel>_snrtrain_<tag>_lc<N>.pth
+                              │              └── latent channels
+                              └── e.g. "7dB" or "range_0_20dB"
+```
 
-## Reference result (AWGN)
+## Reference result (AWGN, paper-style 5-SNR grid)
 ![AWGN PSNR](awgn_psnr.png)
 
 ## Files
-| File         | Role                                                            |
-|--------------|-----------------------------------------------------------------|
-| `models.py`  | Encoder / Decoder / `DeepJSCC` wrapper                          |
-| `channel.py` | AWGN + Rayleigh channel; `power_normalize`                      |
-| `metrics.py` | PSNR + SSIM (pure-torch, no extra deps)                         |
-| `utils.py`   | Seeding + reconstruction-grid visualization                     |
-| `train.py`   | Training script with CLI args, tqdm, `--quick`, robust-SNR mode |
-| `eval.py`    | SNR sweep, curves figure, qualitative reconstructions           |
+| File         | Role                                                                    |
+|--------------|-------------------------------------------------------------------------|
+| `models.py`  | Encoder / Decoder / `DeepJSCC` wrapper                                  |
+| `channel.py` | AWGN + Rayleigh + raw-pixel baseline; `power_normalize`                 |
+| `metrics.py` | PSNR + SSIM (pure-torch, no extra deps)                                 |
+| `utils.py`   | Seeding + reconstruction-grid visualization                             |
+| `train.py`   | Training, both SNR-sweep and bandwidth-sweep modes, `--quick` for demos |
+| `eval.py`    | `--mode snr_sweep` or `bw_sweep`; curves + reconstruction grids         |
