@@ -29,6 +29,10 @@ def parse_args():
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--latent_ch", type=int, default=16)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--weight_decay", type=float, default=5e-4)
+    p.add_argument("--lr_decay_step", type=int, default=10,
+                   help="StepLR step size in epochs (set 0 to disable).")
+    p.add_argument("--lr_decay_gamma", type=float, default=0.3)
     p.add_argument("--data_dir", default="./data")
     p.add_argument("--ckpt_dir", default="checkpoints")
     p.add_argument("--num_workers", type=int, default=0)
@@ -98,13 +102,19 @@ def main():
     for tag, snr_train in configs:
         print(f"\n===== Train @ SNR_train={tag} =====", flush=True)
         model = DeepJSCC(latent_ch=args.latent_ch).to(device)
-        opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+        opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        scheduler = (torch.optim.lr_scheduler.StepLR(opt, step_size=args.lr_decay_step,
+                                                    gamma=args.lr_decay_gamma)
+                     if args.lr_decay_step > 0 else None)
 
         for epoch in range(1, args.epochs + 1):
             tr = train_one_epoch(model, train_loader, opt, device, snr_train, args.channel)
+            if scheduler is not None:
+                scheduler.step()
             eval_snr = snr_train if isinstance(snr_train, (int, float)) else (snr_train[0] + snr_train[1]) / 2
             p = eval_psnr(model, test_loader, device, snr_db=eval_snr, channel=args.channel)
-            print(f"Epoch {epoch:02d} | train_mse={tr:.6f} | PSNR@{eval_snr}dB={p:.2f}", flush=True)
+            lr_now = opt.param_groups[0]["lr"]
+            print(f"Epoch {epoch:02d} | lr={lr_now:.1e} | train_mse={tr:.6f} | PSNR@{eval_snr}dB={p:.2f}", flush=True)
 
         ckpt_path = os.path.join(args.ckpt_dir, f"deepjscc_{args.channel}_snrtrain_{tag}.pth")
         torch.save({
