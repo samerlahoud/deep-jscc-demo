@@ -4,7 +4,7 @@ A minimal PyTorch implementation of **Deep Joint Source-Channel Coding (DeepJSCC
 wireless image transmission on CIFAR-10. Based on
 [Bourtsoulatze et al., 2019](https://ieeexplore.ieee.org/abstract/document/8723589).
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/16rcHuqdTN3X9q8ojp25UNF-BZUXzhOqT)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/samerlahoud/deep-jscc-demo/blob/main/notebooks/demo.ipynb)
 
 ## Architecture
 ![Architecture](architecture.jpg)
