@@ -30,28 +30,29 @@ python eval.py
 
 ## The two-part tutorial story
 
-### Story 1 — Robust training beats single-SNR training
-Train two fixed-SNR models *and* one robust model on `SNR ~ U(0, 20)`, then sweep
-test SNR. The robust model is competitive everywhere and avoids the mismatch dip.
+### Story 1 — Channel noise and graceful degradation
+Train at `SNR_train ∈ {1, 7}` dB, then sweep test SNR. The reconstruction grid puts
+raw transmission next to Deep JSCC at the same SNR — the visual elevator pitch.
 ```bash
-python train.py                                # fixed: SNR_train ∈ {1, 7} dB
-python train.py --snr_train_range 0 20         # robust model over the operating range
-python eval.py                                 # plots all three curves on one axis
+python train.py        # fixed: SNR_train ∈ {1, 7} dB (default)
+python eval.py         # PSNR/SSIM curves + reconstruction grid
 ```
 Outputs:
-- `results/awgn_snr_sweep.png` — PSNR + SSIM vs. SNR_test (robust curve in bold)
+- `results/awgn_snr_sweep.png` — PSNR + SSIM vs. SNR_test
 - `results/awgn_reconstructions.png` — Original | Raw @ X dB | JSCC @ X dB grid
 
 ### Story 2 — Rate-distortion: bandwidth ratio vs. quality
-Train at a fixed SNR across several bandwidth ratios, then plot quality vs. k/n.
+Train at a single SNR across three bandwidth ratios, then plot quality vs. `k/n`.
 ```bash
-python train.py --snr_train_list 7 --latent_ch_list 4 8 16 24
+python train.py --snr_train_list 7 --latent_ch_list 4 8 16
 python eval.py --mode bw_sweep --bw_train_snr 7dB
 ```
+The three `latent_ch` values give `k/n ∈ {1/12, 1/6, 1/3}` — enough to draw the
+rate-distortion knee without tripling training time.
+
 Outputs:
 - `results/awgn_bw_sweep.png` — PSNR + SSIM vs. bandwidth ratio
-- `results/awgn_bw_reconstructions.png` — same image reconstructed at each k/n,
-  visually showing the rate-distortion curve
+- `results/awgn_bw_reconstructions.png` — same image reconstructed at each k/n
 
 ## Other variants
 ```bash

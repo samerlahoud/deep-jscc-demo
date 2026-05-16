@@ -3,10 +3,13 @@
 Two modes:
 
   - snr_sweep (default): sweeps SNR_test across all checkpoints with matching
-    latent_ch. Best for the "robust vs. fixed-SNR training" story.
+    latent_ch. Produces a PSNR/SSIM-vs-SNR plot and a reconstruction grid.
 
   - bw_sweep: sweeps bandwidth ratio k/n across all checkpoints with matching
-    train SNR. Best for the rate-distortion trade-off plot.
+    train SNR. Produces a rate-distortion plot.
+
+If a checkpoint trained with --snr_train_range is present, snr_sweep will
+include it as a bold "robust" curve.
 
 Outputs go to `results/`.
 """
